@@ -1,0 +1,215 @@
+Below is a **clear, step-by-step explanation** for *Portfolio Website Deployment using Jenkins Pipeline*, covering all four parts (a–d).
+This is perfect for assignments, documentation, or viva answers.
+
+---
+
+# ✅ **Portfolio Website Deployment using Jenkins Pipeline – Step-by-Step Explanation**
+
+---
+
+## **a) Develop a two-page personal portfolio website using HTML and CSS**
+
+### **Steps:**
+
+1. **Create the project folder**
+   Example:
+
+   ```
+   portfolio-website/
+      |-- index.html
+      |-- about.html
+      |-- assets/
+           |-- style.css
+           |-- images/
+   ```
+
+2. **Design Two HTML Pages**
+
+   * **index.html** → Home page with your name, skills, projects.
+   * **about.html** → About section, education, contact information.
+
+3. **Add CSS Styling**
+
+   * Use a single `style.css` file for typography, colors, layout, and responsiveness.
+
+4. **Test locally in browser**
+   Open the HTML files to ensure the layout is proper.
+
+---
+
+## **b) Initialize Git locally and push website code to GitHub**
+
+### **Steps:**
+
+1. Initialize Git
+
+   ```
+   git init
+   ```
+
+2. Add all files
+
+   ```
+   git add .
+   ```
+
+3. Commit changes
+
+   ```
+   git commit -m "Initial portfolio website commit"
+   ```
+
+4. Create a repository on GitHub
+   Example: **portfolio-jenkins-deploy**
+
+5. Add remote origin
+
+   ```
+   git remote add origin https://github.com/your-username/portfolio-jenkins-deploy.git
+   ```
+
+6. Push code to GitHub
+
+   ```
+   git push -u origin main
+   ```
+
+---
+
+## **c) Create a Jenkins Pipeline to build and deploy automatically**
+
+### **Prerequisites:**
+
+* Jenkins installed on your server
+* Git plugin installed
+* Pipeline plugin installed
+* A deployment folder or a web server (Apache/Nginx)
+
+---
+
+### **Steps:**
+
+### **Step 1 → Create a new Pipeline Job**
+
+1. Open Jenkins
+2. Click **New Item**
+3. Enter job name:
+   **Portfolio-Website-Pipeline**
+4. Select **Pipeline**
+5. Click **OK**
+
+---
+
+### **Step 2 → Add Jenkinsfile to project (recommended)**
+
+Create a file named **Jenkinsfile** in your repository:
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/your-username/portfolio-jenkins-deploy.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo "No build required for static HTML/CSS project"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Deploying website to web server..."
+                sh 'cp -r * /var/www/html/' 
+                // Path depends on your server
+            }
+        }
+    }
+}
+```
+
+### **Step 3 → Configure Pipeline Script**
+
+1. Go to **Pipeline** section
+2. Select **"Pipeline script from SCM"**
+3. Choose **Git**
+4. Add repo URL
+5. Branch: `main`
+
+---
+
+### **Step 4 → Apply & Run**
+
+* Click **Build Now**
+* Jenkins clones the repo → executes pipeline → deploys files.
+
+---
+
+## **d) Configure GitHub Webhook to trigger Jenkins build automatically**
+
+### **Steps:**
+
+### **Step 1 → Get Jenkins Webhook URL**
+
+Jenkins → Job → **Configure** → Build Triggers
+✔ Enable: **GitHub hook trigger for GITScm polling**
+
+Webhook format:
+
+```
+http://YOUR-JENKINS-SERVER/github-webhook/
+```
+
+---
+
+### **Step 2 → Add Webhook in GitHub**
+
+1. Open your GitHub repo
+2. Go to **Settings → Webhooks**
+3. Click **Add webhook**
+
+Enter details:
+
+* **Payload URL:**
+
+  ```
+  http://YOUR-JENKINS-SERVER/github-webhook/
+  ```
+* **Content type:** `application/json`
+* **Event:**
+  ✔ "Just the push event"
+
+Click **Add Webhook**
+
+---
+
+### **Step 3 → Test Webhook**
+
+* Push any change to GitHub
+* GitHub sends event → Jenkins pipeline is triggered → Website redeploys
+
+---
+
+# 🎉 Final Workflow Summary
+
+| Step | Action                         | Output                         |
+| ---- | ------------------------------ | ------------------------------ |
+| a    | Create two-page static website | HTML/CSS project ready         |
+| b    | Push code to GitHub            | Source code version-controlled |
+| c    | Jenkins Pipeline               | Automatic build + deployment   |
+| d    | GitHub Webhook                 | Auto-trigger on every push     |
+
+---
+
+If you want, I can also provide:
+✅ Full sample portfolio HTML & CSS
+✅ Complete Jenkinsfile for multiple environments
+✅ Diagram explaining the CI/CD pipeline
+✅ Docker-based deployment version
+
+Just tell me!

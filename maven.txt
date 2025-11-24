@@ -1,0 +1,450 @@
+Nice — I’ll walk you through a complete, step-by-step guide to create a **two-page blog web application** using **Java + Maven + HTML/CSS**, push it to **GitHub**, and produce deployable build files. I’ll use **Spring Boot + Thymeleaf** because it’s the simplest, production-ready way to deliver a Java web app with HTML/CSS and Maven. Everything below is runnable as-is.
+
+---
+
+# Summary of what you'll get
+
+1. Project structure (what files/folders to create).
+2. Full `pom.xml` (Maven config) with plugins to build a runnable JAR or WAR.
+3. Java source: a tiny Spring Boot `Application` + `Controller` with an in-memory list of posts.
+4. Two HTML pages (Thymeleaf): home (list of posts) and post details.
+5. CSS file placed under `static`.
+6. Commands to build (Maven) and produce deployable artifacts.
+7. Git + GitHub steps to push repository.
+8. Notes on deploying (runnable jar vs war) and useful Maven commands.
+
+---
+
+# 0 — Prerequisites
+
+* JDK 11+ (or 17) installed and `JAVA_HOME` set.
+* Maven 3.6+ installed.
+* Git installed and a GitHub account.
+* (Optional) `gh` CLI if you want to create repos from terminal.
+
+---
+
+# 1 — Create project skeleton
+
+Terminal commands (manual or copy/paste):
+
+```bash
+mkdir two-page-blog
+cd two-page-blog
+mkdir -p src/main/java/com/example/blog
+mkdir -p src/main/resources/templates
+mkdir -p src/main/resources/static/css
+```
+
+---
+
+# 2 — Maven `pom.xml`
+
+Create `pom.xml` in project root. This configures Spring Boot dependencies and build plugins to create a runnable JAR (and easily switch to WAR if needed):
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>two-page-blog</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>two-page-blog</name>
+
+  <properties>
+    <java.version>17</java.version>
+    <spring.boot.version>3.2.3</spring.boot.version> <!-- adjust if needed -->
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <!-- Spring Boot starter web + Thymeleaf -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+      <version>${spring.boot.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf</artifactId>
+      <version>${spring.boot.version}</version>
+    </dependency>
+    <!-- Optional: devtools for fast dev reload (not for production) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-devtools</artifactId>
+      <scope>runtime</scope>
+      <optional>true</optional>
+    </dependency>
+    <!-- Optional: tests -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Spring Boot plugin creates an executable jar -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring.boot.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Compiler plugin -->
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.10.1</version>
+        <configuration>
+          <release>${java.version}</release>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
+
+> Note: If you later want to produce a WAR for deployment to Tomcat, change `<packaging>war</packaging>` and adjust the main class (I can show details on request).
+
+---
+
+# 3 — Java code (Spring Boot + Controller)
+
+Create file `src/main/java/com/example/blog/BlogApplication.java`:
+
+```java
+package com.example.blog;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BlogApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(BlogApplication.class, args);
+  }
+}
+```
+
+Create `src/main/java/com/example/blog/controller/BlogController.java`:
+
+```java
+package com.example.blog.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.time.LocalDate;
+import java.util.*;
+
+@Controller
+public class BlogController {
+
+    // Simple in-memory data
+    private static final List<Map<String, String>> POSTS = new ArrayList<>();
+    static {
+        Map<String,String> p1 = new HashMap<>();
+        p1.put("id","1");
+        p1.put("title","Welcome to My Blog");
+        p1.put("date", LocalDate.now().toString());
+        p1.put("summary","This is the first post. A short summary...");
+        p1.put("body","<p>This is the <strong>full content</strong> of the first post.</p>");
+        POSTS.add(p1);
+
+        Map<String,String> p2 = new HashMap<>();
+        p2.put("id","2");
+        p2.put("title","Another Post");
+        p2.put("date", LocalDate.now().minusDays(2).toString());
+        p2.put("summary","Second post summary goes here...");
+        p2.put("body","<p>More content for the second post. It can contain HTML.</p>");
+        POSTS.add(p2);
+    }
+
+    @GetMapping("/")
+    public String home(Model model) {
+        model.addAttribute("posts", POSTS);
+        return "index";
+    }
+
+    @GetMapping("/post/{id}")
+    public String post(@PathVariable String id, Model model) {
+        Optional<Map<String,String>> found = POSTS.stream()
+                .filter(p -> p.get("id").equals(id))
+                .findFirst();
+        if (found.isEmpty()) {
+            return "404";
+        }
+        model.addAttribute("post", found.get());
+        return "post";
+    }
+}
+```
+
+> This is intentionally minimal: posts are stored in-memory for demo. For a real app, connect a DB (H2, MySQL).
+
+---
+
+# 4 — Templates (two pages)
+
+Create `src/main/resources/templates/index.html`:
+
+```html
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>My Two-Page Blog</title>
+  <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+  <header class="site-header">
+    <h1>My Blog</h1>
+    <p class="subtitle">A tiny two-page blog built with Java + Spring Boot</p>
+  </header>
+
+  <main>
+    <section class="posts">
+      <ul>
+        <li th:each="p : ${posts}">
+          <a th:href="@{|/post/${p.id}|}">
+            <h2 th:text="${p.title}">Post Title</h2>
+            <p class="meta" th:text="${p.date}">Date</p>
+            <p th:text="${p.summary}">Summary</p>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>© Your Name</p>
+  </footer>
+</body>
+</html>
+```
+
+Create `src/main/resources/templates/post.html`:
+
+```html
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${post.title}">Post</title>
+  <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+  <header class="site-header">
+    <h1 th:text="${post.title}">Post Title</h1>
+    <p class="meta" th:text="${post.date}">Date</p>
+    <p><a href="/">← Back to home</a></p>
+  </header>
+
+  <main>
+    <article th:utext="${post.body}">
+      <!-- post body -->
+    </article>
+  </main>
+
+  <footer>
+    <p>© Your Name</p>
+  </footer>
+</body>
+</html>
+```
+
+Create a simple 404 `src/main/resources/templates/404.html` (optional).
+
+---
+
+# 5 — CSS
+
+Create `src/main/resources/static/css/styles.css`:
+
+```css
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  background: #f7f7f7;
+  color: #222;
+}
+
+.site-header {
+  background: white;
+  padding: 2rem;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.subtitle { color: #666; margin-top: 0.25rem; }
+
+.posts { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+.posts ul { list-style: none; padding: 0; }
+.posts li { background: white; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.posts a { text-decoration: none; color: inherit; display: block; }
+.posts h2 { margin: 0 0 0.25rem 0; }
+.meta { font-size: 0.9rem; color: #888; margin-bottom: 0.5rem; }
+footer { text-align: center; padding: 1.25rem 0; color: #888; font-size: 0.9rem; }
+```
+
+---
+
+# 6 — Run locally with Maven
+
+From project root:
+
+To run in dev (Spring Boot run):
+
+```bash
+mvn spring-boot:run
+```
+
+Then open `http://localhost:8080/` in your browser.
+
+To create a packaged, runnable JAR:
+
+```bash
+mvn clean package
+```
+
+After success, you’ll find `target/two-page-blog-1.0.0.jar` (name depends on artifactId/version). Run it:
+
+```bash
+java -jar target/two-page-blog-1.0.0.jar
+```
+
+---
+
+# 7 — Producing deployable files (details)
+
+* `mvn clean package` — builds the project, runs tests, and creates the packaged artifact (jar).
+* The Spring Boot Maven plugin repackages the jar to be executable (includes dependencies).
+* If you need a WAR to deploy to external Tomcat:
+
+  1. Change `<packaging>war</packaging>` in `pom.xml`.
+  2. Make the main class extend `SpringBootServletInitializer` and override `configure`.
+     Example `BlogApplication.java` to support WAR:
+
+```java
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+@SpringBootApplication
+public class BlogApplication extends SpringBootServletInitializer {
+  @Override
+  protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+    return builder.sources(BlogApplication.class);
+  }
+  public static void main(String[] args) {
+    SpringApplication.run(BlogApplication.class, args);
+  }
+}
+```
+
+Then `mvn clean package` will produce a WAR file in `target/`.
+
+---
+
+# 8 — Git + GitHub: push code
+
+From project root:
+
+1. Initialize Git, commit:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit - two page blog using Spring Boot, Thymeleaf"
+```
+
+2. Create a GitHub repo:
+
+* Option A (web): Go to github.com → New repository → name it `two-page-blog` → create. Copy the remote URL.
+* Option B (gh CLI): `gh repo create yourusername/two-page-blog --public --source=. --remote=origin --push`
+
+3. Add remote and push (if not using gh):
+
+```bash
+git remote add origin https://github.com/<yourusername>/two-page-blog.git
+git branch -M main
+git push -u origin main
+```
+
+Now your code is on GitHub.
+
+---
+
+# 9 — Useful Maven commands recap
+
+* `mvn clean` — remove target/
+* `mvn package` — compile + package (jar/war)
+* `mvn clean package` — start fresh build
+* `mvn test` — run tests
+* `mvn spring-boot:run` — run without packaging
+* `mvn dependency:tree` — inspect dependency graph
+* `mvn -DskipTests package` — package without running tests
+
+---
+
+# 10 — Extra tips & next steps
+
+* Add a `README.md` explaining how to run and how posts are stored (in-memory in this example).
+* To persist posts, add Spring Data JPA + H2/MySQL and a `Post` entity — then replace in-memory structure. (I can provide the code.)
+* Add build profile for production with `maven-compiler-plugin` settings or CI/CD (GitHub Actions) to auto-build & release.
+* If you want Docker: create a `Dockerfile` and `docker build` a runnable image (I can give a full Dockerfile).
+* Add form & POST route to create posts (requires simple form handling).
+
+---
+
+# 11 — Minimal file tree (for reference)
+
+```
+two-page-blog/
+├── pom.xml
+├── src
+│   └── main
+│       ├── java
+│       │   └── com/example/blog
+│       │       ├── BlogApplication.java
+│       │       └── controller
+│       │           └── BlogController.java
+│       └── resources
+│           ├── static
+│           │   └── css
+│           │       └── styles.css
+│           └── templates
+│               ├── index.html
+│               └── post.html
+└── README.md
+```
+
+---
+
+If you'd like, I can:
+
+* provide a ready ZIP of all files (I can generate the exact files if you want),
+* convert this to a WAR example and show Tomcat deploy steps,
+* add a Dockerfile and GitHub Actions workflow to automatically build and push the JAR.
+
+Which of those next steps do you want me to do right now?
